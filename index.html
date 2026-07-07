@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ordem de Produção</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 0 0 40px 0; min-height: 100vh; }
+
+/* ── Header ── */
+.header {
+  background: #1F3864; color: #fff;
+  padding: 16px 20px; text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header h1 { font-size: 20px; margin-bottom: 2px; }
+.header p  { font-size: 12px; opacity: 0.8; }
+
+/* ── Status bar ── */
+.status-bar {
+  background: #2E5FA3; color: #fff;
+  padding: 8px 16px; font-size: 12px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 6px;
+}
+.status-bar .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.dot-verde  { background: #92D050; }
+.dot-amar   { background: #FFD966; }
+.dot-verm   { background: #FF6B6B; }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: #1F3864; border-bottom: 3px solid #2E5FA3; }
+.tab {
+  flex: 1; padding: 12px 8px; text-align: center;
+  color: rgba(255,255,255,0.6); cursor: pointer; font-size: 13px; font-weight: bold;
+  border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s;
+}
+.tab.active { color: #fff; border-bottom-color: #92D050; }
+.tab-content { display: none; padding: 16px; max-width: 700px; margin: 0 auto; }
+.tab-content.active { display: block; }
+
+/* ── Cards ── */
+.card {
+  background: #fff; border-radius: 10px; padding: 18px;
+  margin-bottom: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+}
+.card h2 {
+  font-size: 12px; font-weight: bold; color: #2E5FA3;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 14px; padding-bottom: 6px;
+  border-bottom: 2px solid #D6E4F0;
+}
+.card h2.novo { color: #C55A11; border-bottom-color: #FCE4D6; }
+
+/* ── OP selector ── */
+.op-selector {
+  background: #1F3864; border-radius: 10px; padding: 16px; margin-bottom: 14px;
+}
+.op-selector label { color: #fff; font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; }
+.op-selector select {
+  width: 100%; padding: 12px; border-radius: 8px; border: none;
+  font-size: 14px; background: #fff; font-family: Arial, sans-serif;
+}
+.op-detail {
+  background: #D6E4F0; border-radius: 8px; padding: 12px; margin-top: 10px;
+  font-size: 13px; color: #1F3864; display: none;
+}
+.op-detail table { width: 100%; border-collapse: collapse; }
+.op-detail td { padding: 3px 6px; }
+.op-detail td:first-child { font-weight: bold; white-space: nowrap; width: 40%; }
+
+/* ── Campos ── */
+.field { margin-bottom: 13px; }
+label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 4px; }
+label .req { color: #C00000; }
+label .novo-badge {
+  display: inline-block; background: #FCE4D6; color: #C55A11;
+  border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: bold; margin-left: 5px;
+}
+input, select, textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid #ccc;
+  border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif;
+  transition: border-color 0.2s; background: #fff;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: #2E5FA3;
+  box-shadow: 0 0 0 3px rgba(46,95,163,0.12);
+}
+input[readonly] { background: #f5f5f5; color: #555; }
+.hint { font-size: 11px; color: #888; margin-top: 3px; font-style: italic; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* Campos novos */
+.field.novo input, .field.novo select {
+  border-color: #F4B942; background: #FFFBF0;
+}
+.field.novo input:focus, .field.novo select:focus {
+  border-color: #C55A11; box-shadow: 0 0 0 3px rgba(197,90,17,0.12);
+}
+
+/* Calc display */
+.calc-box {
+  background: #E2EFDA; border: 1.5px solid #92D050; border-radius: 8px;
+  padding: 10px 14px; font-size: 13px; color: #375623; font-weight: bold;
+  min-height: 42px; display: flex; align-items: center;
+}
+
+/* ── OEE Panel ── */
+.oee-panel {
+  display: none; background: #f0f4ff; border: 2px solid #2E5FA3;
+  border-radius: 10px; padding: 16px; margin-top: 14px;
+}
+.oee-panel h3 { color: #1F3864; font-size: 14px; margin-bottom: 12px; text-align: center; }
+.oee-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.oee-item { text-align: center; }
+.oee-item .lbl { font-size: 11px; color: #555; margin-bottom: 4px; }
+.oee-item .val {
+  font-size: 20px; font-weight: bold; padding: 8px 4px;
+  border-radius: 8px; color: #fff;
+}
+.c-verde  { background: #375623; }
+.c-amar   { background: #7F6000; }
+.c-verm   { background: #C00000; }
+.c-neutro { background: #595959; }
+
+/* ── Botões ── */
+.btn-primary {
+  width: 100%; padding: 15px; background: #1F3864; color: #fff;
+  border: none; border-radius: 10px; font-size: 16px; font-weight: bold;
+  cursor: pointer; transition: background 0.2s; margin-top: 6px;
+}
+.btn-primary:hover { background: #2E5FA3; }
+.btn-primary:disabled { background: #999; cursor: not-allowed; }
+.btn-sec {
+  width: 100%; padding: 11px; background: #2E5FA3; color: #fff;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: bold;
+  cursor: pointer; margin-top: 4px; transition: background 0.2s;
+}
+.btn-sec:hover { background: #1F3864; }
+.btn-sm {
+  padding: 6px 14px; border-radius: 6px; border: none;
+  font-size: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+}
+.btn-iniciar { background: #2E5FA3; color: #fff; }
+.btn-devolver { background: #C55A11; color: #fff; }
+
+/* ── Mensagens ── */
+.msg-success {
+  display: none; background: #E2EFDA; border: 2px solid #375623;
+  border-radius: 10px; padding: 18px; text-align: center;
+  color: #375623; font-weight: bold; font-size: 15px; margin-top: 14px;
+}
+.msg-error {
+  display: none; background: #FFCCCC; border: 2px solid #C00000;
+  border-radius: 10px; padding: 14px; text-align: center;
+  color: #C00000; font-weight: bold; font-size: 13px; margin-top: 10px;
+}
+.loading {
+  text-align: center; padding: 20px; color: #2E5FA3; font-size: 13px;
+}
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 3px solid #D6E4F0; border-top-color: #2E5FA3;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin-right: 8px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tabelas Hall / Em Produção ── */
+.op-table-wrap { overflow-x: auto; }
+.op-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;
+}
+.op-table th {
+  background: #1F3864; color: #fff; padding: 8px 10px;
+  text-align: left; white-space: nowrap;
+}
+.op-table td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+.op-table tr:nth-child(even) td { background: #f8f9ff; }
+.op-table tr:hover td { background: #D6E4F0; }
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: bold;
+}
+.badge-hall    { background: #D6E4F0; color: #1F3864; }
+.badge-prod    { background: #E2EFDA; color: #375623; }
+.badge-fim     { background: #FCE4D6; color: #C55A11; }
+
+/* ── Finalizadas do dia ── */
+.fin-card {
+  background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 10px;
+  border-left: 4px solid #375623; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.fin-card h4 { font-size: 13px; color: #1F3864; margin-bottom: 6px; }
+.fin-card .meta { font-size: 12px; color: #666; }
+.fin-card .oee-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 12px;
+  font-size: 13px; font-weight: bold; margin-top: 6px;
+}
+
+/* ── Totais dia ── */
+.totais-dia {
+  background: #1F3864; color: #fff; border-radius: 10px;
+  padding: 16px; margin-bottom: 14px;
+}
+.totais-dia h3 { font-size: 14px; margin-bottom: 10px; text-align: center; opacity: 0.9; }
+.totais-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.totais-item { text-align: center; }
+.totais-item .t-lbl { font-size: 11px; opacity: 0.7; margin-bottom: 3px; }
+.totais-item .t-val { font-size: 20px; font-weight: bold; }
+
+/* Responsivo */
+@media(max-width:480px){
+  .oee-grid { grid-template-columns: repeat(2,1fr); }
+  .totais-grid { grid-template-columns: repeat(2,1fr); }
+  .row2, .row3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Registro de Produção</h1>
+  <p id="data-header">Carregando...</p>
+</div>
+
+<div class="status-bar">
+  <span id="status-conn"><span class="dot dot-amar"></span>Conectando...</span>
+  <span id="status-counts">–</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="trocarTab('registrar')">📝 Registrar OP</div>
+  <div class="tab" onclick="trocarTab('hall')">🏭 Hall / Produção</div>
+  <div class="tab" onclick="trocarTab('finalizadas')">✅ Finalizadas</div>
+</div>
+
+<!-- ══════════════ TAB: REGISTRAR ══════════════ -->
+<div class="tab-content active" id="tab-registrar">
+
+  <!-- Seleção de OP -->
+  <div class="op-selector">
+    <label>Selecionar OP para produzir</label>
+    <select id="sel-op" onchange="selecionarOP()">
+      <option value="">⏳ Carregando OPs...</option>
+    </select>
+    <div class="op-detail" id="op-detail">
+      <table>
+        <tr><td>Produto:</td><td id="det-produto">–</td></tr>
+        <tr><td>Código:</td><td id="det-codigo">–</td></tr>
+        <tr><td>Quantidade:</td><td id="det-qtde">–</td></tr>
+        <tr><td>Data Emissão:</td><td id="det-data">–</td></tr>
+        <tr><td>Família:</td><td id="det-familia">–</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 1. Identificação -->
+  <div class="card">
+    <h2>1. Identificação</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Data da OP <span class="req">*</span></label>
+        <input type="date" id="data" required/>
+      </div>
+      <div class="field">
+        <label>Turno <span class="req">*</span></label>
+        <select id="turno" required>
+          <option value="">Selecione...</option>
+          <option>1º Turno</option>
+          <option>2º Turno</option>
+          <option>3º Turno</option>
+          <option>Adm</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Nº da OP <span class="req">*</span></label>
+        <input type="text" id="op" placeholder="Preenchido ao selecionar" readonly/>
+      </div>
+      <div class="field novo">
+        <label>Processo <span class="req">*</span> <span class="novo-badge">NOVO</span></label>
+        <select id="processo" required>
+          <option value="">Selecione...</option>
+          <option>Pesagem</option>
+          <option>Mistura</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Produto -->
+  <div class="card">
+    <h2>2. Produto</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Código do Produto</label>
+        <input type="text" id="codigo" placeholder="Preenchido ao selecionar" readonly/>
+      </div>
+      <div class="field">
+        <label>Nome do Produto</label>
+        <input type="text" id="produto" placeholder="Preenchido ao selecionar" readonly/>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Execução -->
+  <div class="card">
+    <h2>3. Execução</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Operador Responsável <span class="req">*</span></label>
+        <input type="text" id="operador" placeholder="Nome do operador" required/>
+      </div>
+      <div class="field">
+        <label>Máquina / Linha <span class="req">*</span></label>
+        <input type="text" id="maquina" placeholder="Ex.: Ribon A, Balança 1" required/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Horário de Início <span class="req">*</span></label>
+        <input type="time" id="inicio" required onchange="calcTempoReal()"/>
+      </div>
+      <div class="field">
+        <label>Horário de Término <span class="req">*</span></label>
+        <input type="time" id="termino" required onchange="calcTempoReal()"/>
+      </div>
+    </div>
+    <div class="field">
+      <label>Tempo Real (calculado automaticamente)</label>
+      <div class="calc-box" id="tempo-display">⏱ Preencha os horários acima</div>
+      <input type="hidden" id="tempo-real"/>
+    </div>
+    <div class="field">
+      <label>Meta por Hora — Cronoanálise (kg/h ou un/h)</label>
+      <input type="number" id="meta-hora" min="0" step="0.1"
+             placeholder="Definido pelo supervisor / cronoanálise" onchange="calcOEE()"/>
+    </div>
+  </div>
+
+  <!-- 4. Produção -->
+  <div class="card">
+    <h2>4. Produção</h2>
+    <div class="row3">
+      <div class="field">
+        <label>Qtd. Produzida <span class="req">*</span></label>
+        <input type="number" id="qtd-prod" min="0" step="0.01" required onchange="calcOEE()"/>
+      </div>
+      <div class="field">
+        <label>Unidade</label>
+        <select id="unid-prod">
+          <option>Kg</option><option>Un</option><option>L</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Refugo</label>
+        <input type="number" id="refugo" min="0" step="0.01" value="0" onchange="calcOEE()"/>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field">
+        <label>Un. Refugo</label>
+        <select id="unid-refugo">
+          <option>Kg</option><option>Un</option><option>L</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Retrabalho</label>
+        <input type="number" id="retrabalho" min="0" step="0.01" value="0" onchange="calcOEE()"/>
+      </div>
+      <div class="field">
+        <label>Un. Retrabalho</label>
+        <select id="unid-retrab">
+          <option>Kg</option><option>Un</option><option>L</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Paradas (NOVO) -->
+  <div class="card">
+    <h2 class="novo">5. Paradas <span class="novo-badge">NOVO</span></h2>
+    <div class="row2">
+      <div class="field novo">
+        <label>Tempo de Parada (min) <span class="novo-badge">NOVO</span></label>
+        <input type="number" id="parada" min="0" step="1" value="0"
+               placeholder="0 se não houve parada" onchange="calcOEE()"/>
+      </div>
+      <div class="field novo">
+        <label>Motivo da Parada <span class="novo-badge">NOVO</span></label>
+        <select id="motivo-parada" onchange="toggleOutroMotivo()">
+          <option value="">Sem parada</option>
+          <option>Manutenção</option>
+          <option>Falta de insumo</option>
+          <option>Setup</option>
+          <option>Limpeza</option>
+          <option>Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="campo-outro" style="display:none">
+      <label>Descreva o motivo</label>
+      <input type="text" id="outro-motivo" placeholder="Descreva..."/>
+    </div>
+  </div>
+
+  <!-- 6. OEE -->
+  <div class="card">
+    <h2>6. OEE da OP</h2>
+    <button class="btn-sec" onclick="calcOEE()">⚡ Calcular OEE</button>
+    <div class="oee-panel" id="oee-panel">
+      <h3>Resultado OEE</h3>
+      <div class="oee-grid">
+        <div class="oee-item">
+          <div class="lbl">Disponib. (D)</div>
+          <div class="val c-neutro" id="oee-d">–</div>
+        </div>
+        <div class="oee-item">
+          <div class="lbl">Performance (P)</div>
+          <div class="val c-neutro" id="oee-p">–</div>
+        </div>
+        <div class="oee-item">
+          <div class="lbl">Qualidade (Q)</div>
+          <div class="val c-neutro" id="oee-q">–</div>
+        </div>
+        <div class="oee-item">
+          <div class="lbl">OEE</div>
+          <div class="val c-neutro" id="oee-v">–</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Observações -->
+  <div class="card">
+    <h2>7. Observações</h2>
+    <textarea id="obs" rows="3" placeholder="Registre ocorrências relevantes..."></textarea>
+  </div>
+
+  <button class="btn-primary" id="btn-registrar" onclick="registrarOP()">
+    ✅ Registrar OP
+  </button>
+  <div class="msg-success" id="msg-ok">✅ OP registrada com sucesso!</div>
+  <div class="msg-error"   id="msg-err">❌ Erro ao registrar. Tente novamente.</div>
+
+</div>
+
+<!-- ══════════════ TAB: HALL / PRODUÇÃO ══════════════ -->
+<div class="tab-content" id="tab-hall">
+  <div class="card">
+    <h2>OPs no Hall (aguardando produção)</h2>
+    <div id="hall-content"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  </div>
+  <div class="card">
+    <h2>OPs em Produção</h2>
+    <div id="prod-content"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  </div>
+  <button class="btn-sec" onclick="carregarDados()" style="margin-top:6px">🔄 Atualizar</button>
+</div>
+
+<!-- ══════════════ TAB: FINALIZADAS ══════════════ -->
+<div class="tab-content" id="tab-finalizadas">
+
+  <div class="totais-dia" id="totais-dia" style="display:none">
+    <h3>📊 Totais do Dia</h3>
+    <div class="totais-grid">
+      <div class="totais-item">
+        <div class="t-lbl">OPs Finalizadas</div>
+        <div class="t-val" id="tot-ops">0</div>
+      </div>
+      <div class="totais-item">
+        <div class="t-lbl">OEE Médio</div>
+        <div class="t-val" id="tot-oee">–</div>
+      </div>
+      <div class="totais-item">
+        <div class="t-lbl">Total Produzido</div>
+        <div class="t-val" id="tot-prod">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="fin-content"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  <button class="btn-sec" onclick="carregarDados()" style="margin-top:6px">🔄 Atualizar</button>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzbFEly_KS5YsTQWqhaIs5loV8QyECOu39aKy1slXQF2jmvGI-YiHMX5xwRC3neV-kE/exec";
+
+let dadosGlobais = { hall: [], emProducao: [], finalizadas: [], detalhes: {} };
+
+/* ── Inicialização ── */
+window.onload = function() {
+  // Data de hoje
+  const hoje = new Date();
+  const fmt = d => String(d).padStart(2,'0');
+  document.getElementById("data").value =
+    `${hoje.getFullYear()}-${fmt(hoje.getMonth()+1)}-${fmt(hoje.getDate())}`;
+  document.getElementById("data-header").textContent =
+    hoje.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+  carregarDados();
+};
+
+/* ── Carregar dados do Sheets ── */
+function carregarDados() {
+  document.getElementById("status-conn").innerHTML =
+    '<span class="dot dot-amar"></span>Conectando...';
+
+  fetch(SCRIPT_URL)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'ok') throw new Error(d.msg || 'Erro');
+      dadosGlobais = d;
+      atualizarSelectOP();
+      renderHall();
+      renderProducao();
+      renderFinalizadas();
+      document.getElementById("status-conn").innerHTML =
+        '<span class="dot dot-verde"></span>Conectado';
+      const total = (d.hall||[]).length + (d.emProducao||[]).length;
+      document.getElementById("status-counts").textContent =
+        `Hall: ${(d.hall||[]).length} | Produção: ${(d.emProducao||[]).length} | Hoje: ${(d.finalizadas||[]).length}`;
+    })
+    .catch(err => {
+      document.getElementById("status-conn").innerHTML =
+        '<span class="dot dot-verm"></span>Sem conexão';
+      console.error(err);
+    });
+}
+
+/* ── Popula select de OPs ── */
+function atualizarSelectOP() {
+  const sel = document.getElementById("sel-op");
+  const all = [...(dadosGlobais.hall||[]), ...(dadosGlobais.emProducao||[])];
+  sel.innerHTML = '<option value="">— Selecione uma OP —</option>';
+  all.forEach(op => {
+    const opt = document.createElement("option");
+    opt.value = op.op;
+    opt.textContent = `OP ${op.op}  |  ${op.descricao}  |  ${op.qtde}`;
+    sel.appendChild(opt);
+  });
+}
+
+/* ── Selecionar OP → preenche campos ── */
+function selecionarOP() {
+  const opNum = document.getElementById("sel-op").value;
+  const det   = document.getElementById("op-detail");
+
+  if (!opNum) { det.style.display = 'none'; limparCamposOP(); return; }
+
+  // Busca nos dois grupos
+  const all = [...(dadosGlobais.hall||[]), ...(dadosGlobais.emProducao||[])];
+  const op  = all.find(o => o.op === opNum);
+  if (!op) return;
+
+  // Preenche campos automáticos
+  document.getElementById("op").value      = op.op;
+  document.getElementById("codigo").value  = op.codProduto || '';
+  document.getElementById("produto").value = op.descricao || '';
+
+  // Exibe detalhe
+  document.getElementById("det-produto").textContent = op.descricao || '–';
+  document.getElementById("det-codigo").textContent  = op.codProduto || '–';
+  document.getElementById("det-qtde").textContent    = op.qtde || '–';
+  document.getElementById("det-data").textContent    = op.dataEmissao || '–';
+  document.getElementById("det-familia").textContent = op.familia || '–';
+  det.style.display = 'block';
+
+  // Move para Em Produção automaticamente
+  moverParaProducao(opNum);
+}
+
+function limparCamposOP() {
+  ["op","codigo","produto"].forEach(id => document.getElementById(id).value = '');
+}
+
+/* ── Mover OP para Em Produção ── */
+function moverParaProducao(opNum) {
+  // Só move se estiver no Hall
+  const noHall = (dadosGlobais.hall||[]).find(o => o.op === opNum);
+  if (!noHall) return;
+
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ acao: 'iniciar_producao', op: opNum })
+  }).then(() => carregarDados()).catch(console.error);
+}
+
+/* ── Devolver ao Hall ── */
+function devolverHall(opNum) {
+  if (!confirm(`Devolver a OP ${opNum} ao Hall?`)) return;
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ acao: 'devolver_hall', op: opNum })
+  }).then(() => carregarDados()).catch(console.error);
+}
+
+/* ── Calcular Tempo Real ── */
+function calcTempoReal() {
+  const ini = document.getElementById("inicio").value;
+  const fim = document.getElementById("termino").value;
+  if (!ini || !fim) return;
+  let [h1,m1] = ini.split(":").map(Number);
+  let [h2,m2] = fim.split(":").map(Number);
+  let min = (h2*60+m2) - (h1*60+m1);
+  if (min < 0) min += 1440;
+  document.getElementById("tempo-real").value = min;
+  document.getElementById("tempo-display").textContent =
+    `⏱ ${min} minutos  (${Math.floor(min/60)}h ${min%60}min)`;
+  calcOEE();
+}
+
+/* ── Calcular OEE ── */
+function calcOEE() {
+  const tr  = parseFloat(document.getElementById("tempo-real").value) || 0;
+  const par = parseFloat(document.getElementById("parada").value) || 0;
+  const met = parseFloat(document.getElementById("meta-hora").value) || 0;
+  const qtd = parseFloat(document.getElementById("qtd-prod").value) || 0;
+  const ref = parseFloat(document.getElementById("refugo").value) || 0;
+  const ret = parseFloat(document.getElementById("retrabalho").value) || 0;
+
+  if (tr <= 0 || qtd <= 0) return;
+
+  const D = Math.max((tr - par) / tr, 0);
+  let   P = null;
+  if (met > 0) P = Math.min((met * tr / 60) / qtd, 1);
+  const Q   = Math.max((qtd - ref - ret) / qtd, 0);
+  const oee = P !== null ? D * P * Q : D * Q;
+
+  const panel = document.getElementById("oee-panel");
+  panel.style.display = "block";
+
+  setOEEVal("oee-d", D);
+  setOEEVal("oee-p", P);
+  setOEEVal("oee-q", Q);
+  setOEEVal("oee-v", oee);
+}
+
+function setOEEVal(id, val) {
+  const el = document.getElementById(id);
+  if (val === null) { el.textContent = "s/d"; el.className = "val c-neutro"; return; }
+  el.textContent = (val*100).toFixed(1) + "%";
+  el.className = "val " + (val >= 0.75 ? "c-verde" : val >= 0.6 ? "c-amar" : "c-verm");
+}
+
+/* ── Toggle motivo outro ── */
+function toggleOutroMotivo() {
+  const m = document.getElementById("motivo-parada").value;
+  document.getElementById("campo-outro").style.display = m === "Outro" ? "block" : "none";
+}
+
+/* ── Registrar OP ── */
+function registrarOP() {
+  const obrig = ["data","turno","processo","op","operador","maquina","inicio","termino","qtd-prod"];
+  for (const id of obrig) {
+    const el = document.getElementById(id);
+    if (!el.value) {
+      alert("Preencha todos os campos obrigatórios (*)");
+      el.focus(); return;
+    }
+  }
+
+  const btn = document.getElementById("btn-registrar");
+  btn.disabled = true;
+  btn.textContent = "⏳ Enviando...";
+
+  // Motivo da parada
+  let motivo = document.getElementById("motivo-parada").value;
+  if (motivo === "Outro") {
+    motivo = document.getElementById("outro-motivo").value || "Outro";
+  }
+
+  const dados = {
+    data:          document.getElementById("data").value,
+    turno:         document.getElementById("turno").value,
+    op:            document.getElementById("op").value,
+    codigo:        document.getElementById("codigo").value,
+    produto:       document.getElementById("produto").value,
+    operador:      document.getElementById("operador").value,
+    maquina:       document.getElementById("maquina").value,
+    meta_hora:     document.getElementById("meta-hora").value,
+    hora_inicio:   document.getElementById("inicio").value,
+    hora_termino:  document.getElementById("termino").value,
+    produzido:     document.getElementById("qtd-prod").value,
+    unid_produzida:document.getElementById("unid-prod").value,
+    refugo:        document.getElementById("refugo").value,
+    unid_refugo:   document.getElementById("unid-refugo").value,
+    retrabalho:    document.getElementById("retrabalho").value,
+    unid_retrabalho:document.getElementById("unid-retrab").value,
+    obs:           document.getElementById("obs").value,
+    // Campos novos
+    processo:      document.getElementById("processo").value,
+    tempo_parada:  document.getElementById("parada").value,
+    motivo_parada: motivo,
+    tempo_real:    document.getElementById("tempo-real").value,
+  };
+
+  fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(dados) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'ok') {
+        document.getElementById("msg-ok").style.display = "block";
+        document.getElementById("msg-err").style.display = "none";
+        carregarDados();
+        setTimeout(() => {
+          if (confirm("OP registrada! Registrar nova OP?")) resetForm();
+        }, 1500);
+      } else throw new Error(d.msg);
+    })
+    .catch(() => {
+      document.getElementById("msg-err").style.display = "block";
+      document.getElementById("msg-ok").style.display = "none";
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = "✅ Registrar OP";
+    });
+}
+
+/* ── Reset form ── */
+function resetForm() {
+  ["op","codigo","produto","operador","maquina","inicio","termino","obs","meta-hora",
+   "parada","outro-motivo","tempo-real"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById("qtd-prod").value  = '';
+  document.getElementById("refugo").value    = '0';
+  document.getElementById("retrabalho").value= '0';
+  document.getElementById("processo").value  = '';
+  document.getElementById("turno").value     = '';
+  document.getElementById("motivo-parada").value = '';
+  document.getElementById("sel-op").value    = '';
+  document.getElementById("op-detail").style.display = 'none';
+  document.getElementById("oee-panel").style.display = 'none';
+  document.getElementById("msg-ok").style.display    = 'none';
+  document.getElementById("msg-err").style.display   = 'none';
+  document.getElementById("tempo-display").textContent = '⏱ Preencha os horários acima';
+  document.getElementById("campo-outro").style.display = 'none';
+  const hoje = new Date();
+  const fmt = d => String(d).padStart(2,'0');
+  document.getElementById("data").value =
+    `${hoje.getFullYear()}-${fmt(hoje.getMonth()+1)}-${fmt(hoje.getDate())}`;
+}
+
+/* ── Render Hall ── */
+function renderHall() {
+  const hall = dadosGlobais.hall || [];
+  const el = document.getElementById("hall-content");
+  if (!hall.length) { el.innerHTML = '<p style="color:#888;font-size:13px">Nenhuma OP no Hall.</p>'; return; }
+  el.innerHTML = `<div class="op-table-wrap"><table class="op-table">
+    <tr><th>Nº OP</th><th>Produto</th><th>Qtde</th><th>Família</th><th>Emissão</th><th>Ação</th></tr>
+    ${hall.map(o => `<tr>
+      <td><b>${o.op}</b></td>
+      <td>${o.descricao}</td>
+      <td>${o.qtde}</td>
+      <td><span class="badge badge-hall">${o.familia||'–'}</span></td>
+      <td>${o.dataEmissao||'–'}</td>
+      <td><button class="btn-sm btn-iniciar" onclick="iniciarDoHall('${o.op}')">▶ Iniciar</button></td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+function iniciarDoHall(opNum) {
+  document.getElementById("sel-op").value = opNum;
+  selecionarOP();
+  trocarTab('registrar');
+}
+
+/* ── Render Em Produção ── */
+function renderProducao() {
+  const prod = dadosGlobais.emProducao || [];
+  const el = document.getElementById("prod-content");
+  if (!prod.length) { el.innerHTML = '<p style="color:#888;font-size:13px">Nenhuma OP em produção.</p>'; return; }
+  el.innerHTML = `<div class="op-table-wrap"><table class="op-table">
+    <tr><th>Nº OP</th><th>Produto</th><th>Qtde</th><th>Status</th><th>Ação</th></tr>
+    ${prod.map(o => `<tr>
+      <td><b>${o.op}</b></td>
+      <td>${o.descricao}</td>
+      <td>${o.qtde}</td>
+      <td><span class="badge badge-prod">🔄 Em Produção</span></td>
+      <td>
+        <button class="btn-sm btn-iniciar" onclick="iniciarDoHall('${o.op}')" style="margin-right:4px">✏️ Registrar</button>
+        <button class="btn-sm btn-devolver" onclick="devolverHall('${o.op}')">↩ Devolver</button>
+      </td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+/* ── Render Finalizadas ── */
+function renderFinalizadas() {
+  const fins = dadosGlobais.finalizadas || [];
+  const el = document.getElementById("fin-content");
+
+  if (!fins.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:#888;font-size:13px">Nenhuma OP finalizada hoje.</div>';
+    document.getElementById("totais-dia").style.display = 'none';
+    return;
+  }
+
+  // Totais
+  document.getElementById("totais-dia").style.display = 'block';
+  document.getElementById("tot-ops").textContent = fins.length;
+
+  let totalProd = 0, somaOEE = 0, countOEE = 0;
+  fins.forEach(f => {
+    totalProd += parseFloat(f.produzido) || 0;
+    // Calcular OEE simples da OP finalizada (D×Q apenas, pois P pode não ter meta)
+    const qtd = parseFloat(f.produzido) || 0;
+    const ref = parseFloat(f.refugo) || 0;
+    const ret = parseFloat(f.retrabalho) || 0;
+    const par = parseFloat(f.tempo_parada) || 0;
+    const tr  = parseFloat(f.tempo_real) || 0;
+    if (qtd > 0 && tr > 0) {
+      const D = Math.max((tr - par) / tr, 0);
+      const Q = Math.max((qtd - ref - ret) / qtd, 0);
+      somaOEE += D * Q;
+      countOEE++;
+    }
+  });
+
+  document.getElementById("tot-prod").textContent =
+    totalProd.toLocaleString('pt-BR', {maximumFractionDigits:1});
+  const oeeM = countOEE > 0 ? somaOEE / countOEE : null;
+  document.getElementById("tot-oee").textContent =
+    oeeM !== null ? (oeeM*100).toFixed(1)+'%' : '–';
+
+  // Cards
+  el.innerHTML = fins.slice().reverse().map(f => {
+    const qtd = parseFloat(f.produzido)||0;
+    const ref = parseFloat(f.refugo)||0;
+    const ret = parseFloat(f.retrabalho)||0;
+    const par = parseFloat(f.tempo_parada)||0;
+    const tr  = parseFloat(f.tempo_real)||0;
+    let oeeStr = '–', oeeClass = '';
+    if (qtd > 0 && tr > 0) {
+      const D = Math.max((tr-par)/tr,0);
+      const Q = Math.max((qtd-ref-ret)/qtd,0);
+      const v = D*Q;
+      oeeStr = (v*100).toFixed(1)+'%';
+      oeeClass = v>=0.75 ? 'c-verde' : v>=0.6 ? 'c-amar' : 'c-verm';
+    }
+    return `<div class="fin-card">
+      <h4>OP ${f.op} &nbsp;|&nbsp; ${f.produto||'–'}</h4>
+      <div class="meta">
+        🕐 ${f.hora_inicio||'–'} → ${f.hora_termino||'–'}
+        &nbsp;|&nbsp; Turno: ${f.turno||'–'}
+        &nbsp;|&nbsp; Operador: ${f.operador||'–'}
+        &nbsp;|&nbsp; Máquina: ${f.maquina||'–'}
+      </div>
+      <div class="meta" style="margin-top:4px">
+        📦 Produzido: <b>${f.produzido||0}</b>
+        &nbsp;|&nbsp; Refugo: ${f.refugo||0}
+        &nbsp;|&nbsp; Retrabalho: ${f.retrabalho||0}
+        ${f.processo ? '&nbsp;|&nbsp; Processo: <b>'+f.processo+'</b>' : ''}
+      </div>
+      ${oeeStr !== '–' ? `<span class="oee-badge ${oeeClass}" style="color:#fff">OEE: ${oeeStr}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Trocar tab ── */
+function trocarTab(nome) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const tabs = ['registrar','hall','finalizadas'];
+    t.classList.toggle('active', tabs[i] === nome);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+nome).classList.add('active');
+  if (nome !== 'registrar') carregarDados();
+}
+
+// Atualiza a cada 5 minutos
+setInterval(carregarDados, 5 * 60 * 1000);
+</script>
+</body>
+</html>
