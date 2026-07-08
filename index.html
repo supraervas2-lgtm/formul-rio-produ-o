@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Registro de Produção</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 0 0 40px 0; min-height: 100vh; }
+
+.header {
+  background: #1F3864; color: #fff;
+  padding: 14px 20px; text-align: center;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header h1 { font-size: 19px; margin-bottom: 2px; }
+.header p  { font-size: 11px; opacity: 0.8; }
+
+.status-bar {
+  background: #2E5FA3; color: #fff;
+  padding: 7px 16px; font-size: 12px;
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.dot-verde { background: #92D050; }
+.dot-amar  { background: #FFD966; }
+.dot-verm  { background: #FF6B6B; }
+
+/* ── Pipeline de etapas ── */
+.pipeline {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0; padding: 14px 16px; background: #fff;
+  border-bottom: 2px solid #D6E4F0; flex-wrap: wrap;
+}
+.pipe-step {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 20px;
+  font-size: 13px; font-weight: bold; color: #aaa;
+  border: 2px solid #ddd; background: #f9f9f9;
+  transition: all 0.3s;
+}
+.pipe-step.active { color: #fff; border-color: transparent; }
+.pipe-step.ativa-pesagem { background: #2E5FA3; }
+.pipe-step.ativa-mistura { background: #7030A0; }
+.pipe-step.ativa-fim     { background: #375623; }
+.pipe-step.concluida     { background: #E2EFDA; color: #375623; border-color: #92D050; }
+.pipe-arrow { color: #ccc; font-size: 18px; margin: 0 4px; }
+
+/* ── Tabs ── */
+.tabs { display: flex; background: #1F3864; border-bottom: 3px solid #2E5FA3; }
+.tab {
+  flex: 1; padding: 11px 6px; text-align: center;
+  color: rgba(255,255,255,0.6); cursor: pointer; font-size: 12px; font-weight: bold;
+  border-bottom: 3px solid transparent; margin-bottom: -3px; transition: all 0.2s;
+}
+.tab.active { color: #fff; border-bottom-color: #92D050; }
+.tab-content { display: none; padding: 14px; max-width: 700px; margin: 0 auto; }
+.tab-content.active { display: block; }
+
+/* ── Etapa banner ── */
+.etapa-banner {
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;
+  color: #fff; font-weight: bold; font-size: 14px; text-align: center;
+  display: none;
+}
+.etapa-pesagem { background: #2E5FA3; }
+.etapa-mistura { background: #7030A0; }
+
+/* ── Cards ── */
+.card {
+  background: #fff; border-radius: 10px; padding: 16px;
+  margin-bottom: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+}
+.card h2 {
+  font-size: 12px; font-weight: bold; color: #2E5FA3;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 13px; padding-bottom: 5px; border-bottom: 2px solid #D6E4F0;
+}
+.card h2.novo { color: #C55A11; border-bottom-color: #FCE4D6; }
+
+/* ── OP Selector ── */
+.op-selector {
+  background: #1F3864; border-radius: 10px; padding: 14px; margin-bottom: 13px;
+}
+.op-selector label { color: #fff; font-size: 13px; font-weight: bold; display: block; margin-bottom: 8px; }
+.op-selector select {
+  width: 100%; padding: 10px; border-radius: 8px; border: none;
+  font-size: 14px; background: #fff; font-family: Arial, sans-serif;
+}
+.modo-btns { display: flex; gap: 8px; margin-bottom: 10px; }
+.modo-btn {
+  flex: 1; padding: 9px; border-radius: 8px; font-weight: bold; font-size: 12px;
+  cursor: pointer; border: 2px solid rgba(255,255,255,0.3);
+  background: transparent; color: #fff; transition: all 0.2s;
+}
+.modo-btn.ativo {
+  background: #92D050; border-color: #92D050; color: #1F3864;
+}
+.busca-manual { display: flex; gap: 8px; }
+.busca-manual input {
+  flex: 1; padding: 10px 12px; border: none; border-radius: 8px;
+  font-size: 14px; font-family: Arial, sans-serif;
+}
+.busca-manual button {
+  padding: 10px 14px; background: #92D050; color: #1F3864;
+  border: none; border-radius: 8px; font-weight: bold; font-size: 13px;
+  cursor: pointer; white-space: nowrap;
+}
+
+.op-detail {
+  background: #D6E4F0; border-radius: 8px; padding: 11px; margin-top: 10px;
+  font-size: 12px; color: #1F3864; display: none;
+}
+.op-detail table { width: 100%; border-collapse: collapse; }
+.op-detail td { padding: 3px 5px; }
+.op-detail td:first-child { font-weight: bold; white-space: nowrap; width: 38%; }
+.badge-etapa {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: bold; color: #fff;
+}
+.badge-pesagem { background: #2E5FA3; }
+.badge-mistura { background: #7030A0; }
+.badge-hall    { background: #595959; }
+
+/* ── Campos ── */
+.field { margin-bottom: 12px; }
+label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 4px; }
+label .req { color: #C00000; }
+label .novo-badge {
+  display: inline-block; background: #FCE4D6; color: #C55A11;
+  border-radius: 10px; padding: 1px 8px; font-size: 10px; font-weight: bold; margin-left: 5px;
+}
+input, select, textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid #ccc;
+  border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: #2E5FA3; box-shadow: 0 0 0 3px rgba(46,95,163,0.12);
+}
+input[readonly] { background: #f5f5f5; color: #555; }
+.hint { font-size: 11px; color: #888; margin-top: 3px; font-style: italic; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+
+.field.novo input, .field.novo select {
+  border-color: #F4B942; background: #FFFBF0;
+}
+
+.calc-box {
+  background: #E2EFDA; border: 1.5px solid #92D050; border-radius: 8px;
+  padding: 10px 13px; font-size: 13px; color: #375623; font-weight: bold;
+  min-height: 40px; display: flex; align-items: center;
+}
+
+/* ── OEE Panel ── */
+.oee-panel {
+  display: none; background: #f0f4ff; border: 2px solid #2E5FA3;
+  border-radius: 10px; padding: 14px; margin-top: 12px;
+}
+.oee-panel h3 { color: #1F3864; font-size: 13px; margin-bottom: 10px; text-align: center; }
+.oee-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; }
+.oee-item { text-align: center; }
+.oee-item .lbl { font-size: 10px; color: #555; margin-bottom: 3px; }
+.oee-item .val {
+  font-size: 18px; font-weight: bold; padding: 7px 3px;
+  border-radius: 8px; color: #fff;
+}
+.c-verde  { background: #375623; }
+.c-amar   { background: #7F6000; }
+.c-verm   { background: #C00000; }
+.c-neutro { background: #595959; }
+
+/* ── Botões ── */
+.btn-primary {
+  width: 100%; padding: 14px; color: #fff; border: none;
+  border-radius: 10px; font-size: 15px; font-weight: bold;
+  cursor: pointer; transition: background 0.2s; margin-top: 5px;
+}
+.btn-pesagem { background: #2E5FA3; }
+.btn-pesagem:hover { background: #1F3864; }
+.btn-mistura { background: #7030A0; }
+.btn-mistura:hover { background: #4B0082; }
+.btn-primary:disabled { background: #999 !important; cursor: not-allowed; }
+
+.btn-sec {
+  width: 100%; padding: 10px; background: #2E5FA3; color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: bold;
+  cursor: pointer; margin-top: 4px; transition: background 0.2s;
+}
+.btn-sec:hover { background: #1F3864; }
+.btn-devolver-hall {
+  width: 100%; padding: 10px; background: #C55A11; color: #fff;
+  border: none; border-radius: 8px; font-weight: bold; font-size: 13px;
+  cursor: pointer; margin-top: 8px; transition: background 0.2s;
+}
+.btn-devolver-hall:hover { background: #843B0B; }
+.btn-sm {
+  padding: 5px 12px; border-radius: 6px; border: none;
+  font-size: 12px; font-weight: bold; cursor: pointer;
+}
+.btn-ini { background: #2E5FA3; color: #fff; }
+.btn-dev { background: #C55A11; color: #fff; }
+
+/* ── Mensagens ── */
+.msg-ok  {
+  display: none; background: #E2EFDA; border: 2px solid #375623;
+  border-radius: 10px; padding: 16px; text-align: center;
+  color: #375623; font-weight: bold; font-size: 14px; margin-top: 12px;
+}
+.msg-err {
+  display: none; background: #FFCCCC; border: 2px solid #C00000;
+  border-radius: 10px; padding: 12px; text-align: center;
+  color: #C00000; font-weight: bold; font-size: 12px; margin-top: 8px;
+}
+.loading { text-align: center; padding: 18px; color: #2E5FA3; font-size: 13px; }
+.spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 3px solid #D6E4F0; border-top-color: #2E5FA3;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin-right: 6px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tabelas ── */
+.op-table-wrap { overflow-x: auto; }
+.op-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.op-table th { background: #1F3864; color: #fff; padding: 7px 9px; text-align: left; white-space: nowrap; }
+.op-table td { padding: 6px 9px; border-bottom: 1px solid #eee; vertical-align: middle; }
+.op-table tr:nth-child(even) td { background: #f8f9ff; }
+.op-table tr:hover td { background: #D6E4F0; }
+
+/* ── Finalizadas ── */
+.fin-card {
+  background: #fff; border-radius: 10px; padding: 13px; margin-bottom: 9px;
+  border-left: 4px solid #375623; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+.fin-card h4 { font-size: 12px; color: #1F3864; margin-bottom: 5px; }
+.fin-card .meta { font-size: 11px; color: #666; }
+
+.totais-dia {
+  background: #1F3864; color: #fff; border-radius: 10px;
+  padding: 14px; margin-bottom: 13px;
+}
+.totais-dia h3 { font-size: 13px; margin-bottom: 9px; text-align: center; opacity: 0.9; }
+.totais-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.totais-item { text-align: center; }
+.totais-item .t-lbl { font-size: 10px; opacity: 0.7; margin-bottom: 2px; }
+.totais-item .t-val { font-size: 19px; font-weight: bold; }
+
+@media(max-width:480px){
+  .oee-grid { grid-template-columns: repeat(2,1fr); }
+  .totais-grid { grid-template-columns: repeat(2,1fr); }
+  .row2, .row3 { grid-template-columns: 1fr; }
+  .pipeline { gap: 4px; }
+  .pipe-arrow { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Registro de Produção</h1>
+  <p id="data-header">Carregando...</p>
+</div>
+
+<div class="status-bar">
+  <span id="status-conn"><span class="dot dot-amar"></span>Conectando...</span>
+  <span id="status-counts">–</span>
+</div>
+
+<!-- Pipeline visual -->
+<div class="pipeline">
+  <div class="pipe-step" id="pipe-hall">📋 Hall</div>
+  <div class="pipe-arrow">›</div>
+  <div class="pipe-step" id="pipe-pesagem">⚖️ Pesagem</div>
+  <div class="pipe-arrow">›</div>
+  <div class="pipe-step" id="pipe-mistura">🔄 Mistura</div>
+  <div class="pipe-arrow">›</div>
+  <div class="pipe-step" id="pipe-fim">✅ Finalizado</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="trocarTab('registrar')">📝 Registrar</div>
+  <div class="tab" onclick="trocarTab('hall')">🏭 Hall / Produção</div>
+  <div class="tab" onclick="trocarTab('finalizadas')">✅ Finalizadas</div>
+</div>
+
+<!-- ══════════ TAB REGISTRAR ══════════ -->
+<div class="tab-content active" id="tab-registrar">
+
+  <!-- Banner da etapa atual -->
+  <div class="etapa-banner" id="etapa-banner"></div>
+
+  <!-- Seleção de OP -->
+  <div class="op-selector">
+    <label>Localizar OP</label>
+    <div class="modo-btns">
+      <button class="modo-btn ativo" id="btn-modo-lista" onclick="setModo('lista')">📋 Selecionar</button>
+      <button class="modo-btn" id="btn-modo-digit" onclick="setModo('digitar')">⌨️ Digitar Nº</button>
+    </div>
+
+    <div id="modo-lista">
+      <select id="sel-op" onchange="selecionarDaLista()">
+        <option value="">⏳ Carregando OPs...</option>
+      </select>
+    </div>
+
+    <div id="modo-digitar" style="display:none">
+      <div class="busca-manual">
+        <input type="text" id="input-op-manual" placeholder="Ex.: 12345"
+               onkeydown="if(event.key==='Enter') buscarManual()"/>
+        <button onclick="buscarManual()">🔍 Buscar</button>
+      </div>
+      <p style="color:rgba(255,255,255,0.6);font-size:11px;margin-top:5px;font-style:italic">
+        Busca em OPs do Hall e Em Produção
+      </p>
+    </div>
+
+    <div class="op-detail" id="op-detail">
+      <table>
+        <tr><td>Produto:</td>      <td id="det-produto">–</td></tr>
+        <tr><td>Código:</td>       <td id="det-codigo">–</td></tr>
+        <tr><td>Quantidade:</td>   <td id="det-qtde">–</td></tr>
+        <tr><td>Data Emissão:</td> <td id="det-data">–</td></tr>
+        <tr><td>Família:</td>      <td id="det-familia">–</td></tr>
+        <tr><td>Etapa atual:</td>  <td id="det-etapa">–</td></tr>
+      </table>
+      <button class="btn-devolver-hall" id="btn-devolver-wrap"
+              style="display:none" onclick="devolverHallAtual()">
+        ↩ Devolver ao Hall
+      </button>
+    </div>
+  </div>
+
+  <!-- 1. Identificação -->
+  <div class="card">
+    <h2>1. Identificação</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Data da OP <span class="req">*</span></label>
+        <input type="date" id="data" required/>
+      </div>
+      <div class="field">
+        <label>Turno <span class="req">*</span></label>
+        <select id="turno" required>
+          <option value="">Selecione...</option>
+          <option>1º Turno</option><option>2º Turno</option>
+          <option>3º Turno</option><option>Adm</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Nº da OP</label>
+        <input type="text" id="op" readonly/>
+      </div>
+      <div class="field">
+        <label>Etapa</label>
+        <input type="text" id="etapa-display" readonly
+               style="font-weight:bold;background:#f0f4ff;color:#2E5FA3"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Produto -->
+  <div class="card">
+    <h2>2. Produto</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Código</label>
+        <input type="text" id="codigo" readonly/>
+      </div>
+      <div class="field">
+        <label>Nome do Produto</label>
+        <input type="text" id="produto" readonly/>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Execução -->
+  <div class="card">
+    <h2>3. Execução</h2>
+    <div class="row2">
+      <div class="field">
+        <label>Operador <span class="req">*</span></label>
+        <input type="text" id="operador" placeholder="Nome do operador" required/>
+      </div>
+      <div class="field">
+        <label>Máquina / Linha <span class="req">*</span></label>
+        <input type="text" id="maquina" placeholder="Ex.: Ribon A, Balança 1" required/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Início <span class="req">*</span></label>
+        <input type="time" id="inicio" required onchange="calcTempoReal()"/>
+      </div>
+      <div class="field">
+        <label>Término <span class="req">*</span></label>
+        <input type="time" id="termino" required onchange="calcTempoReal()"/>
+      </div>
+    </div>
+    <div class="field">
+      <label>Tempo Real (calculado)</label>
+      <div class="calc-box" id="tempo-display">⏱ Preencha os horários</div>
+      <input type="hidden" id="tempo-real"/>
+    </div>
+    <div class="field">
+      <label>Meta por Hora — Cronoanálise</label>
+      <input type="number" id="meta-hora" min="0" step="0.1"
+             placeholder="kg/h ou un/h — definido pelo supervisor" onchange="calcOEE()"/>
+    </div>
+  </div>
+
+  <!-- 4. Produção -->
+  <div class="card">
+    <h2>4. Produção</h2>
+    <div class="row3">
+      <div class="field">
+        <label>Qtd. Produzida <span class="req">*</span></label>
+        <input type="number" id="qtd-prod" min="0" step="0.01" required onchange="calcOEE()"/>
+      </div>
+      <div class="field">
+        <label>Unidade</label>
+        <select id="unid-prod"><option>Kg</option><option>Un</option><option>L</option></select>
+      </div>
+      <div class="field">
+        <label>Refugo</label>
+        <input type="number" id="refugo" min="0" step="0.01" value="0" onchange="calcOEE()"/>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field">
+        <label>Un. Refugo</label>
+        <select id="unid-refugo"><option>Kg</option><option>Un</option><option>L</option></select>
+      </div>
+      <div class="field">
+        <label>Retrabalho</label>
+        <input type="number" id="retrabalho" min="0" step="0.01" value="0" onchange="calcOEE()"/>
+      </div>
+      <div class="field">
+        <label>Un. Retrabalho</label>
+        <select id="unid-retrab"><option>Kg</option><option>Un</option><option>L</option></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Paradas -->
+  <div class="card">
+    <h2 class="novo">5. Paradas</h2>
+    <div class="row2">
+      <div class="field novo">
+        <label>Tempo de Parada (min)</label>
+        <input type="number" id="parada" min="0" step="1" value="0" onchange="calcOEE()"/>
+      </div>
+      <div class="field novo">
+        <label>Motivo da Parada</label>
+        <select id="motivo-parada" onchange="toggleOutro()">
+          <option value="">Sem parada</option>
+          <option>Manutenção</option><option>Falta de insumo</option>
+          <option>Setup</option><option>Limpeza</option><option>Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="campo-outro" style="display:none">
+      <label>Descreva o motivo</label>
+      <input type="text" id="outro-motivo"/>
+    </div>
+  </div>
+
+  <!-- 6. OEE -->
+  <div class="card">
+    <h2>6. OEE da Etapa</h2>
+    <button class="btn-sec" onclick="calcOEE()">⚡ Calcular OEE</button>
+    <div class="oee-panel" id="oee-panel">
+      <h3>Resultado OEE</h3>
+      <div class="oee-grid">
+        <div class="oee-item"><div class="lbl">Disponib. (D)</div><div class="val c-neutro" id="oee-d">–</div></div>
+        <div class="oee-item"><div class="lbl">Performance (P)</div><div class="val c-neutro" id="oee-p">–</div></div>
+        <div class="oee-item"><div class="lbl">Qualidade (Q)</div><div class="val c-neutro" id="oee-q">–</div></div>
+        <div class="oee-item"><div class="lbl">OEE</div><div class="val c-neutro" id="oee-v">–</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Observações -->
+  <div class="card">
+    <h2>7. Observações</h2>
+    <textarea id="obs" rows="3" placeholder="Registre ocorrências..."></textarea>
+  </div>
+
+  <button class="btn-primary btn-pesagem" id="btn-registrar" onclick="registrar()">
+    ✅ Concluir Etapa
+  </button>
+  <div class="msg-ok"  id="msg-ok"></div>
+  <div class="msg-err" id="msg-err">❌ Erro ao registrar. Tente novamente.</div>
+
+</div>
+
+<!-- ══════════ TAB HALL / PRODUÇÃO ══════════ -->
+<div class="tab-content" id="tab-hall">
+  <div class="card">
+    <h2>📋 OPs no Hall</h2>
+    <div id="hall-content"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  </div>
+  <div class="card">
+    <h2>⚖️ Em Produção — Etapa Pesagem</h2>
+    <div id="prod-pesagem"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  </div>
+  <div class="card">
+    <h2>🔄 Em Produção — Etapa Mistura</h2>
+    <div id="prod-mistura"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  </div>
+  <button class="btn-sec" onclick="carregarDados()" style="margin-top:6px">🔄 Atualizar</button>
+</div>
+
+<!-- ══════════ TAB FINALIZADAS ══════════ -->
+<div class="tab-content" id="tab-finalizadas">
+  <div class="totais-dia" id="totais-dia" style="display:none">
+    <h3>📊 Totais do Dia</h3>
+    <div class="totais-grid">
+      <div class="totais-item"><div class="t-lbl">OPs Finalizadas</div><div class="t-val" id="tot-ops">0</div></div>
+      <div class="totais-item"><div class="t-lbl">OEE Médio</div><div class="t-val" id="tot-oee">–</div></div>
+      <div class="totais-item"><div class="t-lbl">Total Produzido</div><div class="t-val" id="tot-prod">0</div></div>
+    </div>
+  </div>
+  <div id="fin-content"><div class="loading"><span class="spinner"></span>Carregando...</div></div>
+  <button class="btn-sec" onclick="carregarDados()" style="margin-top:6px">🔄 Atualizar</button>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwDz3uar9K--nQEBeIXhlhpyxWZUzypHYLLmEUXmcEumfmF_jEvOsfmyoeYCiJaeftF/exec";
+let dados = { hall: [], emProducao: [], finalizadas: [], detalhes: {} };
+let etapaAtual = ''; // 'Pesagem' ou 'Mistura'
+
+window.onload = function() {
+  const hoje = new Date();
+  const f = d => String(d).padStart(2,'0');
+  document.getElementById("data").value =
+    `${hoje.getFullYear()}-${f(hoje.getMonth()+1)}-${f(hoje.getDate())}`;
+  document.getElementById("data-header").textContent =
+    hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  carregarDados();
+};
+
+/* ── Carregar dados ── */
+function carregarDados() {
+  document.getElementById("status-conn").innerHTML =
+    '<span class="dot dot-amar"></span>Conectando...';
+  fetch(SCRIPT_URL)
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'ok') throw new Error(d.msg);
+      dados = d;
+      atualizarSelectOP();
+      renderHall();
+      renderProducao();
+      renderFinalizadas();
+      document.getElementById("status-conn").innerHTML =
+        '<span class="dot dot-verde"></span>Conectado';
+      const h = (d.hall||[]).length, p = (d.emProducao||[]).length;
+      const pes = (d.emProducao||[]).filter(o=>o.etapa==='Pesagem').length;
+      const mis = (d.emProducao||[]).filter(o=>o.etapa==='Mistura').length;
+      document.getElementById("status-counts").textContent =
+        `Hall: ${h} | Pesagem: ${pes} | Mistura: ${mis} | Hoje: ${(d.finalizadas||[]).length}`;
+    })
+    .catch(() => {
+      document.getElementById("status-conn").innerHTML =
+        '<span class="dot dot-verm"></span>Sem conexão';
+    });
+}
+
+/* ── Popula select ── */
+function atualizarSelectOP() {
+  const sel  = document.getElementById("sel-op");
+  const hall = dados.hall || [];
+  const prod = dados.emProducao || [];
+  sel.innerHTML = '<option value="">— Selecione uma OP —</option>';
+
+  if (hall.length) {
+    const g = document.createElement("optgroup");
+    g.label = "📋 Hall (aguardando)";
+    hall.forEach(o => {
+      const opt = document.createElement("option");
+      opt.value = o.op;
+      opt.textContent = `OP ${o.op}  |  ${o.descricao}  |  ${o.qtde}`;
+      g.appendChild(opt);
+    });
+    sel.appendChild(g);
+  }
+
+  const pes = prod.filter(o => o.etapa === 'Pesagem');
+  const mis = prod.filter(o => o.etapa === 'Mistura');
+
+  if (pes.length) {
+    const g = document.createElement("optgroup");
+    g.label = "⚖️ Em Produção — Pesagem";
+    pes.forEach(o => {
+      const opt = document.createElement("option");
+      opt.value = o.op;
+      opt.textContent = `OP ${o.op}  |  ${o.descricao}  |  ${o.qtde}`;
+      g.appendChild(opt);
+    });
+    sel.appendChild(g);
+  }
+
+  if (mis.length) {
+    const g = document.createElement("optgroup");
+    g.label = "🔄 Em Produção — Mistura";
+    mis.forEach(o => {
+      const opt = document.createElement("option");
+      opt.value = o.op;
+      opt.textContent = `OP ${o.op}  |  ${o.descricao}  |  ${o.qtde}`;
+      g.appendChild(opt);
+    });
+    sel.appendChild(g);
+  }
+}
+
+/* ── Modo lista / digitar ── */
+function setModo(modo) {
+  const isList = modo === 'lista';
+  document.getElementById("modo-lista").style.display   = isList ? 'block' : 'none';
+  document.getElementById("modo-digitar").style.display = isList ? 'none'  : 'block';
+  document.getElementById("btn-modo-lista").classList.toggle('ativo', isList);
+  document.getElementById("btn-modo-digit").classList.toggle('ativo', !isList);
+  limparCampos();
+  if (!isList) document.getElementById("input-op-manual").focus();
+}
+
+function selecionarDaLista() {
+  const opNum = document.getElementById("sel-op").value;
+  if (!opNum) { limparCampos(); return; }
+  const all = [...(dados.hall||[]), ...(dados.emProducao||[])];
+  const op  = all.find(o => o.op === opNum);
+  if (op) preencherOP(op);
+}
+
+function buscarManual() {
+  const v = document.getElementById("input-op-manual").value.trim();
+  if (!v) { alert('Digite o número da OP.'); return; }
+  const all = [...(dados.hall||[]), ...(dados.emProducao||[])];
+  const op  = all.find(o => String(o.op).trim() === v);
+  if (!op) {
+    alert(`OP ${v} não encontrada no Hall ou Em Produção.\nVerifique o número ou atualize a lista.`);
+    return;
+  }
+  preencherOP(op);
+}
+
+/* ── Preencher campos com dados da OP ── */
+function preencherOP(op) {
+  const emProd  = (dados.emProducao||[]).find(o => o.op === op.op);
+  const noHall  = (dados.hall||[]).find(o => o.op === op.op);
+  etapaAtual    = emProd ? (emProd.etapa || 'Pesagem') : 'Pesagem';
+
+  document.getElementById("op").value      = op.op;
+  document.getElementById("codigo").value  = op.codProduto || '';
+  document.getElementById("produto").value = op.descricao || '';
+
+  // Detalhe
+  document.getElementById("det-produto").textContent = op.descricao || '–';
+  document.getElementById("det-codigo").textContent  = op.codProduto || '–';
+  document.getElementById("det-qtde").textContent    = op.qtde || '–';
+  document.getElementById("det-data").textContent    = op.dataEmissao || '–';
+  document.getElementById("det-familia").textContent = op.familia || '–';
+
+  const etapaBadge = noHall
+    ? '<span class="badge-etapa badge-hall">📋 No Hall</span>'
+    : `<span class="badge-etapa badge-${etapaAtual.toLowerCase()}">${etapaAtual === 'Pesagem' ? '⚖️' : '🔄'} ${etapaAtual}</span>`;
+  document.getElementById("det-etapa").innerHTML = etapaBadge;
+
+  // Botão devolver (só para OPs Em Produção)
+  document.getElementById("btn-devolver-wrap").style.display = emProd ? 'block' : 'none';
+  document.getElementById("op-detail").style.display = 'block';
+
+  // Campo etapa no form
+  document.getElementById("etapa-display").value = etapaAtual;
+  document.getElementById("etapa-display").style.color =
+    etapaAtual === 'Pesagem' ? '#2E5FA3' : '#7030A0';
+
+  // Banner
+  const banner = document.getElementById("etapa-banner");
+  banner.style.display = 'block';
+  banner.className = `etapa-banner etapa-${etapaAtual.toLowerCase()}`;
+  banner.textContent = etapaAtual === 'Pesagem'
+    ? '⚖️ Registrando Etapa: PESAGEM — ao concluir, a OP avançará para Mistura'
+    : '🔄 Registrando Etapa: MISTURA — ao concluir, a OP será finalizada';
+
+  // Botão de registro
+  const btn = document.getElementById("btn-registrar");
+  btn.textContent  = etapaAtual === 'Pesagem' ? '⚖️ Concluir Pesagem → Avançar para Mistura' : '🔄 Concluir Mistura → Finalizar OP';
+  btn.className    = `btn-primary btn-${etapaAtual.toLowerCase()}`;
+
+  // Pipeline visual
+  atualizarPipeline(noHall ? 'hall' : etapaAtual.toLowerCase());
+
+  // Move do Hall para Produção se necessário
+  if (noHall) moverParaProducao(op.op);
+}
+
+/* ── Pipeline visual ── */
+function atualizarPipeline(etapa) {
+  ['pipe-hall','pipe-pesagem','pipe-mistura','pipe-fim'].forEach(id => {
+    document.getElementById(id).className = 'pipe-step';
+  });
+  if (etapa === 'hall') {
+    document.getElementById('pipe-hall').classList.add('active','ativa-pesagem');
+  } else if (etapa === 'pesagem') {
+    document.getElementById('pipe-hall').classList.add('concluida');
+    document.getElementById('pipe-pesagem').classList.add('active','ativa-pesagem');
+  } else if (etapa === 'mistura') {
+    document.getElementById('pipe-hall').classList.add('concluida');
+    document.getElementById('pipe-pesagem').classList.add('concluida');
+    document.getElementById('pipe-mistura').classList.add('active','ativa-mistura');
+  } else if (etapa === 'fim') {
+    ['pipe-hall','pipe-pesagem','pipe-mistura'].forEach(id =>
+      document.getElementById(id).classList.add('concluida'));
+    document.getElementById('pipe-fim').classList.add('active','ativa-fim');
+  }
+}
+
+/* ── Mover Hall → Em Produção ── */
+function moverParaProducao(opNum) {
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ acao: 'iniciar_producao', op: opNum })
+  }).then(() => carregarDados()).catch(console.error);
+}
+
+/* ── Devolver ao Hall ── */
+function devolverHallAtual() {
+  const opNum = document.getElementById("op").value;
+  if (!opNum) return;
+  if (!confirm(`Devolver a OP ${opNum} ao Hall?\n\nEla voltará para o início do fluxo.`)) return;
+
+  fetch(SCRIPT_URL, {
+    method: 'POST', body: JSON.stringify({ acao: 'devolver_hall', op: opNum })
+  })
+  .then(r => r.json())
+  .then(() => {
+    alert(`OP ${opNum} devolvida ao Hall com sucesso!`);
+    resetForm();
+    carregarDados();
+  })
+  .catch(() => alert('Erro ao devolver. Tente novamente.'));
+}
+
+/* ── Calcular tempo real ── */
+function calcTempoReal() {
+  const ini = document.getElementById("inicio").value;
+  const fim = document.getElementById("termino").value;
+  if (!ini || !fim) return;
+  let [h1,m1] = ini.split(":").map(Number);
+  let [h2,m2] = fim.split(":").map(Number);
+  let min = (h2*60+m2) - (h1*60+m1);
+  if (min < 0) min += 1440;
+  document.getElementById("tempo-real").value = min;
+  document.getElementById("tempo-display").textContent =
+    `⏱ ${min} minutos  (${Math.floor(min/60)}h ${min%60}min)`;
+  calcOEE();
+}
+
+/* ── Calcular OEE ── */
+function calcOEE() {
+  const tr  = parseFloat(document.getElementById("tempo-real").value) || 0;
+  const par = parseFloat(document.getElementById("parada").value) || 0;
+  const met = parseFloat(document.getElementById("meta-hora").value) || 0;
+  const qtd = parseFloat(document.getElementById("qtd-prod").value) || 0;
+  const ref = parseFloat(document.getElementById("refugo").value) || 0;
+  const ret = parseFloat(document.getElementById("retrabalho").value) || 0;
+  if (tr <= 0 || qtd <= 0) return;
+
+  const D   = Math.max((tr - par) / tr, 0);
+  const P   = met > 0 ? Math.min((met * tr / 60) / qtd, 1) : null;
+  const Q   = Math.max((qtd - ref - ret) / qtd, 0);
+  const oee = P !== null ? D * P * Q : D * Q;
+
+  document.getElementById("oee-panel").style.display = 'block';
+  setOEEVal("oee-d", D);
+  setOEEVal("oee-p", P);
+  setOEEVal("oee-q", Q);
+  setOEEVal("oee-v", oee);
+}
+
+function setOEEVal(id, val) {
+  const el = document.getElementById(id);
+  if (val === null) { el.textContent = "s/d"; el.className = "val c-neutro"; return; }
+  el.textContent = (val*100).toFixed(1)+"%";
+  el.className = "val " + (val>=0.75?"c-verde":val>=0.6?"c-amar":"c-verm");
+}
+
+function getOEEVal(id) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === '–' || el.textContent === 's/d') return '';
+  return (parseFloat(el.textContent)/100).toFixed(4);
+}
+
+function toggleOutro() {
+  document.getElementById("campo-outro").style.display =
+    document.getElementById("motivo-parada").value === "Outro" ? "block" : "none";
+}
+
+/* ── Registrar OP ── */
+function registrar() {
+  const obrig = ["data","turno","op","operador","maquina","inicio","termino","qtd-prod"];
+  for (const id of obrig) {
+    if (!document.getElementById(id).value) {
+      alert("Preencha todos os campos obrigatórios (*)");
+      document.getElementById(id).focus(); return;
+    }
+  }
+  if (!etapaAtual) { alert("Selecione uma OP primeiro."); return; }
+
+  const btn = document.getElementById("btn-registrar");
+  btn.disabled = true; btn.textContent = "⏳ Enviando...";
+
+  let motivo = document.getElementById("motivo-parada").value;
+  if (motivo === "Outro") motivo = document.getElementById("outro-motivo").value || "Outro";
+
+  const payload = {
+    data: document.getElementById("data").value,
+    turno: document.getElementById("turno").value,
+    op: document.getElementById("op").value,
+    codigo: document.getElementById("codigo").value,
+    produto: document.getElementById("produto").value,
+    operador: document.getElementById("operador").value,
+    maquina: document.getElementById("maquina").value,
+    meta_hora: document.getElementById("meta-hora").value,
+    hora_inicio: document.getElementById("inicio").value,
+    hora_termino: document.getElementById("termino").value,
+    produzido: document.getElementById("qtd-prod").value,
+    unid_produzida: document.getElementById("unid-prod").value,
+    refugo: document.getElementById("refugo").value,
+    unid_refugo: document.getElementById("unid-refugo").value,
+    retrabalho: document.getElementById("retrabalho").value,
+    unid_retrabalho: document.getElementById("unid-retrab").value,
+    obs: document.getElementById("obs").value,
+    processo: etapaAtual,
+    etapa: etapaAtual,
+    tempo_real: document.getElementById("tempo-real").value,
+    tempo_parada: document.getElementById("parada").value,
+    motivo_parada: motivo,
+    oee_d: getOEEVal("oee-d"),
+    oee_p: getOEEVal("oee-p"),
+    oee_q: getOEEVal("oee-q"),
+    oee:   getOEEVal("oee-v"),
+  };
+
+  fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status !== 'ok') throw new Error(d.msg);
+      const proximaEtapa = etapaAtual === 'Pesagem' ? 'Mistura' : 'Finalizada';
+      const msgEl = document.getElementById("msg-ok");
+      msgEl.style.display = 'block';
+
+      if (etapaAtual === 'Pesagem') {
+        msgEl.innerHTML = `✅ Pesagem registrada!<br><small>OP avançou para → 🔄 <b>Mistura</b></small>`;
+        atualizarPipeline('mistura');
+        setTimeout(() => {
+          if (confirm('Pesagem concluída! Deseja registrar a etapa de Mistura agora?')) {
+            // Recarrega para pegar nova etapa
+            carregarDados();
+            setTimeout(() => {
+              const opNum = payload.op;
+              const all = [...(dados.emProducao||[])];
+              const op  = all.find(o => o.op === opNum);
+              if (op) {
+                document.getElementById("sel-op").value = opNum;
+                preencherOP(op);
+                limparCamposRegistro();
+              }
+            }, 1500);
+          } else {
+            resetForm();
+          }
+        }, 1800);
+      } else {
+        msgEl.innerHTML = `✅ Mistura registrada!<br><small>OP <b>${payload.op}</b> finalizada com sucesso! 🎉</small>`;
+        atualizarPipeline('fim');
+        setTimeout(() => {
+          if (confirm('OP finalizada! Registrar nova OP?')) resetForm();
+        }, 1800);
+      }
+      carregarDados();
+    })
+    .catch(() => {
+      document.getElementById("msg-err").style.display = 'block';
+    })
+    .finally(() => {
+      btn.disabled = false;
+      const label = etapaAtual === 'Pesagem'
+        ? '⚖️ Concluir Pesagem → Avançar para Mistura'
+        : '🔄 Concluir Mistura → Finalizar OP';
+      btn.textContent = label;
+    });
+}
+
+/* ── Limpar campos de registro (mantém OP selecionada) ── */
+function limparCamposRegistro() {
+  ["operador","maquina","inicio","termino","meta-hora","obs","outro-motivo"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById("qtd-prod").value  = '';
+  document.getElementById("refugo").value    = '0';
+  document.getElementById("retrabalho").value= '0';
+  document.getElementById("parada").value    = '0';
+  document.getElementById("turno").value     = '';
+  document.getElementById("motivo-parada").value = '';
+  document.getElementById("oee-panel").style.display = 'none';
+  document.getElementById("msg-ok").style.display   = 'none';
+  document.getElementById("msg-err").style.display  = 'none';
+  document.getElementById("tempo-display").textContent = '⏱ Preencha os horários';
+  document.getElementById("campo-outro").style.display = 'none';
+  document.getElementById("tempo-real").value = '';
+}
+
+/* ── Reset completo ── */
+function limparCampos() {
+  limparCamposRegistro();
+  document.getElementById("op").value      = '';
+  document.getElementById("codigo").value  = '';
+  document.getElementById("produto").value = '';
+  document.getElementById("etapa-display").value = '';
+  document.getElementById("op-detail").style.display = 'none';
+  document.getElementById("etapa-banner").style.display = 'none';
+  document.getElementById("btn-devolver-wrap").style.display = 'none';
+  document.getElementById("sel-op").value = '';
+  document.getElementById("input-op-manual").value = '';
+  etapaAtual = '';
+  ['pipe-hall','pipe-pesagem','pipe-mistura','pipe-fim'].forEach(id =>
+    document.getElementById(id).className = 'pipe-step');
+}
+
+function resetForm() {
+  limparCampos();
+  const hoje = new Date();
+  const f = d => String(d).padStart(2,'0');
+  document.getElementById("data").value =
+    `${hoje.getFullYear()}-${f(hoje.getMonth()+1)}-${f(hoje.getDate())}`;
+}
+
+/* ── Render Hall ── */
+function renderHall() {
+  const hall = dados.hall || [];
+  const el = document.getElementById("hall-content");
+  if (!hall.length) { el.innerHTML = '<p style="color:#888;font-size:12px">Nenhuma OP no Hall.</p>'; return; }
+  el.innerHTML = `<div class="op-table-wrap"><table class="op-table">
+    <tr><th>Nº OP</th><th>Produto</th><th>Qtde</th><th>Família</th><th>Emissão</th><th>Ação</th></tr>
+    ${hall.map(o => `<tr>
+      <td><b>${o.op}</b></td><td>${o.descricao}</td><td>${o.qtde}</td>
+      <td>${o.familia||'–'}</td><td>${o.dataEmissao||'–'}</td>
+      <td><button class="btn-sm btn-ini" onclick="iniciarOP('${o.op}')">▶ Iniciar</button></td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+/* ── Render Em Produção (separado por etapa) ── */
+function renderProducao() {
+  const prod = dados.emProducao || [];
+  const pes  = prod.filter(o => o.etapa === 'Pesagem');
+  const mis  = prod.filter(o => o.etapa === 'Mistura');
+
+  const renderGrupo = (lista) => {
+    if (!lista.length) return '<p style="color:#888;font-size:12px">Nenhuma OP nesta etapa.</p>';
+    return `<div class="op-table-wrap"><table class="op-table">
+      <tr><th>Nº OP</th><th>Produto</th><th>Qtde</th><th>Ações</th></tr>
+      ${lista.map(o => `<tr>
+        <td><b>${o.op}</b></td><td>${o.descricao}</td><td>${o.qtde}</td>
+        <td>
+          <button class="btn-sm btn-ini" onclick="iniciarOP('${o.op}')" style="margin-right:4px">✏️ Registrar</button>
+          <button class="btn-sm btn-dev" onclick="devolverHall('${o.op}')">↩ Devolver</button>
+        </td>
+      </tr>`).join('')}
+    </table></div>`;
+  };
+
+  document.getElementById("prod-pesagem").innerHTML = renderGrupo(pes);
+  document.getElementById("prod-mistura").innerHTML = renderGrupo(mis);
+}
+
+function iniciarOP(opNum) {
+  const all = [...(dados.hall||[]), ...(dados.emProducao||[])];
+  const op  = all.find(o => o.op === opNum);
+  if (op) { preencherOP(op); trocarTab('registrar'); }
+}
+
+function devolverHall(opNum) {
+  if (!confirm(`Devolver a OP ${opNum} ao Hall?`)) return;
+  fetch(SCRIPT_URL, { method:'POST', body: JSON.stringify({ acao:'devolver_hall', op: opNum }) })
+    .then(() => carregarDados()).catch(() => alert('Erro ao devolver.'));
+}
+
+/* ── Render Finalizadas ── */
+function renderFinalizadas() {
+  const fins = dados.finalizadas || [];
+  const el   = document.getElementById("fin-content");
+
+  if (!fins.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:#888;font-size:12px">Nenhuma OP finalizada hoje.</div>';
+    document.getElementById("totais-dia").style.display = 'none';
+    return;
+  }
+
+  document.getElementById("totais-dia").style.display = 'block';
+  document.getElementById("tot-ops").textContent = fins.length;
+  let totProd = 0, somaOEE = 0, cntOEE = 0;
+  fins.forEach(f => {
+    totProd += parseFloat(f.produzido)||0;
+    const oeeV = parseFloat(f.oee)||0;
+    if (oeeV > 0) { somaOEE += oeeV; cntOEE++; }
+  });
+  document.getElementById("tot-prod").textContent =
+    totProd.toLocaleString('pt-BR',{maximumFractionDigits:1});
+  document.getElementById("tot-oee").textContent =
+    cntOEE > 0 ? (somaOEE/cntOEE*100).toFixed(1)+'%' : '–';
+
+  // Agrupar por OP (Pesagem + Mistura = 1 OP)
+  const porOP = {};
+  fins.forEach(f => {
+    if (!porOP[f.op]) porOP[f.op] = [];
+    porOP[f.op].push(f);
+  });
+
+  el.innerHTML = Object.keys(porOP).reverse().map(opNum => {
+    const registros = porOP[opNum];
+    const ultimo    = registros[registros.length-1];
+    const etapas    = registros.map(r => r.etapa||r.processo||'–').join(' → ');
+    const oeeVal    = parseFloat(ultimo.oee)||0;
+    const oeeStr    = oeeVal > 0 ? (oeeVal*100).toFixed(1)+'%' : '–';
+    const oeeClass  = oeeVal>=0.75?'c-verde':oeeVal>=0.6?'c-amar':'c-verm';
+    return `<div class="fin-card">
+      <h4>OP ${opNum}  |  ${ultimo.produto||'–'}</h4>
+      <div class="meta">
+        Operador: ${ultimo.operador||'–'} | Máquina: ${ultimo.maquina||'–'}<br>
+        Etapas: <b>${etapas}</b> | Produzido: <b>${ultimo.produzido||0}</b>
+      </div>
+      ${oeeStr!=='–'?`<span class="badge-etapa ${oeeClass}" style="color:#fff;margin-top:6px;display:inline-block">OEE: ${oeeStr}</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Trocar tab ── */
+function trocarTab(nome) {
+  ['registrar','hall','finalizadas'].forEach((t,i) =>
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t===nome));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+nome).classList.add('active');
+  if (nome !== 'registrar') carregarDados();
+}
+
+setInterval(carregarDados, 5*60*1000);
+</script>
+</body>
+</html>
